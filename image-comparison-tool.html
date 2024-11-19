@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Comparison Tool</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+        #comparison-container {
+            position: relative;
+            max-width: 100%;
+            max-height: 80vh;
+            overflow: hidden;
+            user-select: none;
+            background-color: #f0f0f0;
+        }
+        #image-a, #image-b {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+        #image-b {
+            clip-path: inset(0 100% 0 0);
+        }
+        #handle {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 4px;
+            background: white;
+            left: 50%;
+            transform: translateX(-50%);
+            cursor: ew-resize;
+            z-index: 10;
+        }
+        #handle::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 40px;
+            height: 40px;
+            background: white;
+            border-radius: 50%;
+        }
+        #handle::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 32px;
+            height: 32px;
+            background: #007bff;
+            border-radius: 50%;
+        }
+        #file-inputs {
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Image Comparison Tool</h1>
+    <div id="file-inputs">
+        <input type="file" id="file-a" accept="image/*">
+        <input type="file" id="file-b" accept="image/*">
+    </div>
+    <div id="comparison-container">
+        <img id="image-a" src="/api/placeholder/400/300" alt="Image A">
+        <img id="image-b" src="/api/placeholder/400/300" alt="Image B">
+        <div id="handle"></div>
+    </div>
+
+    <script>
+        const container = document.getElementById('comparison-container');
+        const imageA = document.getElementById('image-a');
+        const imageB = document.getElementById('image-b');
+        const handle = document.getElementById('handle');
+        const fileA = document.getElementById('file-a');
+        const fileB = document.getElementById('file-b');
+
+        function handleFileSelect(file, imgElement) {
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    imgElement.src = e.target.result;
+                    imgElement.onload = setImageDimensions;
+                }
+                reader.readAsDataURL(file);
+            }
+        }
+
+        fileA.addEventListener('change', (e) => handleFileSelect(e.target.files[0], imageA));
+        fileB.addEventListener('change', (e) => handleFileSelect(e.target.files[0], imageB));
+
+        function setImageDimensions() {
+            const maxWidth = Math.max(imageA.naturalWidth, imageB.naturalWidth);
+            const maxHeight = Math.max(imageA.naturalHeight, imageB.naturalHeight);
+            const aspectRatio = maxWidth / maxHeight;
+
+            let containerWidth, containerHeight;
+
+            if (aspectRatio > 1) {
+                containerWidth = Math.min(maxWidth, window.innerWidth * 0.8);
+                containerHeight = containerWidth / aspectRatio;
+            } else {
+                containerHeight = Math.min(maxHeight, window.innerHeight * 0.8);
+                containerWidth = containerHeight * aspectRatio;
+            }
+
+            container.style.width = `${containerWidth}px`;
+            container.style.height = `${containerHeight}px`;
+
+            updateSliderPosition(container.getBoundingClientRect().left + containerWidth / 2);
+        }
+
+        let isDragging = false;
+
+        function updateSliderPosition(x) {
+            const containerRect = container.getBoundingClientRect();
+            let percentage = (x - containerRect.left) / containerRect.width * 100;
+            percentage = Math.max(0, Math.min(100, percentage)); // Clamp between 0 and 100
+            handle.style.left = `${percentage}%`;
+            imageB.style.clipPath = `inset(0 ${100 - percentage}% 0 0)`;
+        }
+
+        handle.addEventListener('mousedown', (e) => {
+            isDragging = true;
+            e.preventDefault();
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+            updateSliderPosition(e.clientX);
+        });
+
+        document.addEventListener('mouseup', () => {
+            isDragging = false;
+        });
+
+        // Touch events for mobile support
+        handle.addEventListener('touchstart', (e) => {
+            isDragging = true;
+            e.preventDefault();
+        });
+
+        document.addEventListener('touchmove', (e) => {
+            if (!isDragging) return;
+            updateSliderPosition(e.touches[0].clientX);
+        });
+
+        document.addEventListener('touchend', () => {
+            isDragging = false;
+        });
+
+        // Initial setup
+        window.addEventListener('load', setImageDimensions);
+        window.addEventListener('resize', setImageDimensions);
+    </script>
+</body>
+</html>
